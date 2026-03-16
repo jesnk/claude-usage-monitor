@@ -97,15 +97,19 @@ async function fetchWithSessionKey(apiPath, sessionKey, accountId) {
   const ses = getAccountSession(accountId);
 
   // Inject the sessionKey cookie into this session's cookie store
-  await ses.cookies.set({
-    url: 'https://claude.ai',
-    name: 'sessionKey',
-    value: cleanKey,
-    domain: '.claude.ai',
-    path: '/',
-    secure: true,
-    sameSite: 'no_restriction',
-  });
+  try {
+    await ses.cookies.set({
+      url: 'https://claude.ai',
+      name: 'sessionKey',
+      value: cleanKey,
+      domain: '.claude.ai',
+      path: '/',
+      secure: true,
+      sameSite: 'no_restriction',
+    });
+  } catch (_) {
+    // Cookie may already be set from a previous call — continue anyway
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
