@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Claude Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      rgba(10,10,14,0.93);
+  --bg-card: rgba(20,20,28,0.96);
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text:    #e8e8f0;
+  --dim:     rgba(200,200,220,0.5);
+  --muted:   rgba(180,180,200,0.35);
+  --accent:  #d97706;
+  --green:   #10b981;
+  --yellow:  #f59e0b;
+  --red:     #ef4444;
+  --purple:  #7c3aed;
+  --mono:    'JetBrains Mono', monospace;
+  --sans:    'DM Sans', sans-serif;
+  --r:       14px;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; -webkit-app-region:no-drag; user-select:none; }
+
+body { width:340px; background:transparent; font-family:var(--sans); overflow:hidden; }
+
+#app {
+  width:340px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  box-shadow:0 8px 40px rgba(0,0,0,0.65),0 2px 8px rgba(0,0,0,0.4);
+  backdrop-filter:blur(24px) saturate(1.4);
+  overflow:hidden;
+  position:relative;
+}
+#app::before {
+  content:''; position:absolute; inset:0; border-radius:var(--r);
+  background:linear-gradient(135deg,rgba(217,119,6,0.04) 0%,transparent 40%,rgba(124,58,237,0.03) 100%);
+  pointer-events:none;
+}
+
+/* ── Header ── */
+.hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 12px 8px; border-bottom:1px solid var(--border);
+  -webkit-app-region:drag; cursor:grab;
+}
+.hdr:active { cursor:grabbing; }
+.hdr-left { display:flex; align-items:center; gap:7px; }
+.logo {
+  width:20px; height:20px; border-radius:5px;
+  background:linear-gradient(135deg,#d97706,#7c3aed);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:#fff; letter-spacing:-.5px;
+}
+.app-title { font-size:11px; font-weight:600; color:var(--dim); letter-spacing:.04em; text-transform:uppercase; }
+.hdr-actions { display:flex; gap:2px; -webkit-app-region:no-drag; }
+.ibtn {
+  width:22px; height:22px; border-radius:6px; border:none;
+  background:transparent; color:var(--muted); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; font-size:14px;
+}
+.ibtn:hover { background:rgba(255,255,255,0.08); color:var(--text); }
+.ibtn.spin svg { animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Cards ── */
+#cards { padding:8px 10px 10px; display:flex; flex-direction:column; gap:8px; }
+
+.card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:10px; padding:10px 12px;
+  position:relative; overflow:hidden; transition:border-color .2s;
+}
+.card::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+  border-radius:3px 0 0 3px; background:var(--clr,var(--accent));
+}
+.card:hover { border-color:var(--border2); }
+
+.card-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.card-name { font-size:11.5px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px; }
+.dot {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--clr,var(--accent)); box-shadow:0 0 6px var(--clr,var(--accent));
+  animation:pulse 2.5s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.dot.err  { background:var(--red);    box-shadow:0 0 6px var(--red);    animation:none; }
+.dot.wait { background:var(--yellow); box-shadow:0 0 6px var(--yellow); animation:none; }
+.plan-tag {
+  font-size:8px; padding:1px 5px; border-radius:4px;
+  background:rgba(255,255,255,0.06); color:var(--muted);
+}
+.card-email { font-size:9.5px; color:var(--muted); font-family:var(--mono); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.rows { display:flex; flex-direction:column; gap:6px; }
+.row  { display:flex; flex-direction:column; gap:3px; }
+.row-meta { display:flex; justify-content:space-between; align-items:center; }
+.row-label { font-size:9.5px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.row-pct   { font-size:11px; font-family:var(--mono); font-weight:600; }
+.track { height:5px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; }
+.fill  { height:100%; border-radius:99px; transition:width .8s cubic-bezier(.4,0,.2,1); position:relative; }
+.fill::after {
+  content:''; position:absolute; right:0; top:0; bottom:0; width:18px;
+  background:linear-gradient(to right,transparent,rgba(255,255,255,.3));
+}
+.reset { font-size:9px; color:var(--muted); font-family:var(--mono); text-align:right; }
+.err-msg { font-size:10px; color:var(--red); opacity:.8; font-family:var(--mono); padding:4px 0; line-height:1.5; }
+
+/* ── Empty ── */
+#empty {
+  display:none; flex-direction:column; align-items:center;
+  padding:22px 16px; gap:8px; text-align:center;
+}
+.empty-icon { font-size:28px; opacity:.35; }
+.empty-t    { font-size:12px; font-weight:600; color:var(--dim); }
+.empty-d    { font-size:10.5px; color:var(--muted); line-height:1.5; }
+
+/* ── Footer ── */
+#footer {
+  display:none; padding:5px 12px 7px;
+  border-top:1px solid var(--border);
+  display:none; align-items:center; justify-content:space-between;
+}
+.foot-time { font-size:9px; color:var(--muted); font-family:var(--mono); }
+.foot-link { font-size:9px; color:var(--muted); cursor:pointer; transition:color .15s; }
+.foot-link:hover { color:var(--accent); }
+
+/* ── Settings Panel ── */
+#settings {
+  display:none; position:absolute; inset:0;
+  background:var(--bg); border-radius:var(--r);
+  z-index:100; overflow-y:auto; overflow-x:hidden;
+  cursor:default; -webkit-app-region:no-drag;
+}
+#settings.on { display:block; }
+#settings * { -webkit-app-region:no-drag; }
+
+.s-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 12px; border-bottom:1px solid var(--border);
+  position:sticky; top:0; background:var(--bg); z-index:1;
+}
+.s-title { font-size:12px; font-weight:600; color:var(--text); }
+.s-body  { padding:12px; display:flex; flex-direction:column; gap:14px; }
+.s-section-title {
+  font-size:9.5px; font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:6px;
+}
+
+/* Account list */
+.acc-item {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:8px; padding:9px 10px;
+  display:flex; align-items:center; gap:8px; margin-bottom:6px;
+}
+.acc-item-info { flex:1; min-width:0; }
+.acc-item-name { font-size:11px; font-weight:600; color:var(--text); }
+.acc-item-key  { font-size:9.5px; font-family:var(--mono); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px; }
+.del-btn {
+  width:22px; height:22px; border-radius:6px; border:none;
+  background:rgba(239,68,68,.1); color:var(--red); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+  transition:all .15s; flex-shrink:0;
+}
+.del-btn:hover { background:rgba(239,68,68,.25); }
+
+/* Form */
+.fg       { display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
+.f-label  { font-size:10px; color:var(--muted); font-weight:500; }
+.f-input  {
+  background:rgba(255,255,255,0.04); border:1px solid var(--border);
+  border-radius:7px; padding:7px 10px; color:var(--text);
+  font-size:11px; font-family:var(--mono); outline:none;
+  transition:border-color .15s; width:100%;
+  cursor:text; user-select:text; -webkit-user-select:text;
+}
+.f-input:focus { border-color:var(--accent); }
+.f-input::placeholder { color:var(--muted); }
+.f-hint {
+  font-size:9.5px; color:var(--muted); line-height:1.5;
+  padding:6px 8px; background:rgba(255,255,255,0.02);
+  border-radius:6px; border:1px solid var(--border); margin-top:2px;
+}
+.f-hint code {
+  font-family:var(--mono); background:rgba(217,119,6,.15);
+  color:var(--accent); padding:1px 4px; border-radius:3px; font-size:9px;
+}
+.color-row { display:flex; gap:6px; }
+.chip {
+  width:20px; height:20px; border-radius:50%; cursor:pointer;
+  border:2px solid transparent; transition:all .15s;
+}
+.chip.on { border-color:#fff; transform:scale(1.2); }
+
+.add-btn, .setup-btn {
+  width:100%; padding:8px; border-radius:8px; cursor:pointer;
+  font-size:11.5px; font-weight:600; font-family:var(--sans);
+  transition:all .15s;
+}
+.add-btn {
+  border:1px solid var(--border2); background:rgba(217,119,6,.1); color:var(--accent);
+}
+.add-btn:hover { background:rgba(217,119,6,.2); }
+.add-btn:disabled { opacity:.4; cursor:not-allowed; }
+.setup-btn {
+  border:1px solid var(--border2); background:rgba(255,255,255,.05); color:var(--text);
+  width:auto; padding:6px 14px; font-size:11px;
+}
+.setup-btn:hover { background:rgba(255,255,255,.1); }
+
+/* Debug */
+.dbg-btn {
+  width:100%; padding:8px; border-radius:8px; cursor:pointer;
+  font-size:11.5px; font-weight:600; font-family:var(--sans);
+  border:1px solid rgba(124,58,237,.3); background:rgba(124,58,237,.1); color:#a78bfa;
+  transition:all .15s;
+}
+.dbg-btn:hover { background:rgba(124,58,237,.2); }
+.dbg-btn:disabled { opacity:.4; cursor:not-allowed; }
+#dbg-out { display:none; margin-top:10px; }
+
+/* Shimmer */
+@keyframes shimmer { 0%,100%{opacity:.3} 50%{opacity:.7} }
+.shimmer { animation:shimmer 1.5s ease-in-out infinite; }
+
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:99px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="logo">C</div>
+      <span class="app-title">Monitor</span>
+    </div>
+    <div class="hdr-actions">
+      <button class="ibtn" id="btn-refresh" title="새로고침">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+        </svg>
+      </button>
+      <button class="ibtn" id="btn-settings" title="설정">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button class="ibtn" id="btn-min" title="최소화">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="cards"></div>
+  <div id="empty">
+    <div class="empty-icon">⬡</div>
+    <div class="empty-t">계정 없음</div>
+    <div class="empty-d">설정에서 Claude 세션 키를<br>추가해 모니터링을 시작하세요</div>
+    <button class="setup-btn" id="btn-setup">계정 추가하기</button>
+  </div>
+  <div id="footer">
+    <span class="foot-time" id="foot-time">—</span>
+    <span class="foot-link" id="foot-link">claude.ai 열기 →</span>
+  </div>
+
+  <!-- Settings Panel -->
+  <div id="settings">
+    <div class="s-hdr">
+      <span class="s-title">⚙ 설정</span>
+      <button class="ibtn" id="btn-close-settings">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="s-body">
+
+      <!-- Account List -->
+      <div>
+        <div class="s-section-title">등록된 계정</div>
+        <div id="acc-list"></div>
+      </div>
+
+      <!-- Add Account -->
+      <div>
+        <div class="s-section-title">계정 추가 (최대 2개)</div>
+        <div class="fg">
+          <div class="f-label">계정 이름</div>
+          <input class="f-input" id="inp-label" placeholder="예: 메인 계정" type="text">
+        </div>
+        <div class="fg">
+          <div class="f-label">세션 키 (sessionKey 쿠키)</div>
+          <input class="f-input" id="inp-key" placeholder="sk-ant-..." type="password">
+        </div>
+        <div class="fg">
+          <div class="f-label">색상</div>
+          <div class="color-row" id="color-row">
+            <div class="chip on"  style="background:#d97706" data-c="#d97706"></div>
+            <div class="chip"     style="background:#7c3aed" data-c="#7c3aed"></div>
+            <div class="chip"     style="background:#10b981" data-c="#10b981"></div>
+            <div class="chip"     style="background:#3b82f6" data-c="#3b82f6"></div>
+            <div class="chip"     style="background:#ec4899" data-c="#ec4899"></div>
+          </div>
+        </div>
+        <div class="f-hint">
+          <strong>세션 키 얻는 법:</strong><br>
+          1. claude.ai 로그인 후 <strong>F12</strong> 개발자도구 열기<br>
+          2. Application → Cookies → https://claude.ai<br>
+          3. <code>sessionKey</code> 값 복사 → 위에 붙여넣기
+        </div>
+        <br>
+        <button class="add-btn" id="btn-add">+ 계정 추가</button>
+      </div>
+
+      <!-- Debug -->
+      <div>
+        <div class="s-section-title">🔬 API 디버그</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.5;">데이터가 안 뜰 때 실행해서 응답 구조를 확인하세요.</div>
+        <div id="dbg-accts"></div>
+        <button class="dbg-btn" id="btn-dbg">🔍 API 응답 확인</button>
+        <div id="dbg-out"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = { accounts: [], usage: {}, color: '#d97706', refreshing: false };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function barColor(pct) {
+  if (pct == null) return 'rgba(255,255,255,0.18)';
+  if (pct >= 90)   return 'var(--red)';
+  if (pct >= 70)   return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+function fmtReset(iso) {
+  if (!iso) return '';
+  const diff = new Date(iso) - Date.now();
+  if (diff <= 0) return '곧 초기화';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return h > 0 ? `초기화까지 ${h}h ${m}m` : `초기화까지 ${m}분`;
+}
+
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')} 업데이트`;
+}
+
+function resize(h) { window.claudeAPI?.setWindowSize(340, h); }
+
+// ── Render Main ───────────────────────────────────────────────────────────────
+function renderMain() {
+  const cards  = $('cards');
+  const empty  = $('empty');
+  const footer = $('footer');
+  const settingsOpen = $('settings').classList.contains('on');
+
+  if (!settingsOpen) {
+    resize(S.accounts.length === 0 ? 200 : S.accounts.length === 1 ? 235 : 320);
+  }
+
+  if (S.accounts.length === 0) {
+    cards.innerHTML = '';
+    empty.style.display = 'flex';
+    footer.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  footer.style.display = 'flex';
+
+  let latest = 0;
+  cards.innerHTML = S.accounts.map(acc => {
+    const data  = S.usage[acc.id];
+    const color = acc.color || '#d97706';
+
+    // Loading state
+    if (!data) {
+      return `<div class="card" style="--clr:${color}">
+        <div class="card-hdr">
+          <div class="card-name"><div class="dot wait"></div>${esc(acc.label)}</div>
+          <div class="card-email shimmer">로딩 중…</div>
+        </div>
+        <div class="rows"><div class="track"><div class="fill shimmer" style="width:30%;background:rgba(255,255,255,0.1)"></div></div></div>
+      </div>`;
+    }
+
+    if (data.lastUpdated > latest) latest = data.lastUpdated;
+
+    // Error state
+    if (data.error) {
+      return `<div class="card" style="--clr:${color}">
+        <div class="card-hdr">
+          <div class="card-name"><div class="dot err"></div>${esc(acc.label)}</div>
+          <div class="card-email">${esc(data.email||'')}</div>
+        </div>
+        <div class="err-msg">⚠ ${esc(data.error)}</div>
+      </div>`;
+    }
+
+    const sess = data.usage?.session || {};
+    const week = data.usage?.weekly  || {};
+    const sp   = sess.utilization;
+    const wp   = week.utilization;
+    const sc   = barColor(sp);
+    const wc   = barColor(wp);
+    const plan = data.plan && data.plan !== '?' ? `<span class="plan-tag">${esc(data.plan)}</span>` : '';
+
+    return `<div class="card" style="--clr:${color}">
+      <div class="card-hdr">
+        <div class="card-name"><div class="dot"></div>${esc(acc.label)}${plan}</div>
+        <div class="card-email">${esc(data.email||'')}</div>
+      </div>
+      <div class="rows">
+        <div class="row">
+          <div class="row-meta">
+            <span class="row-label">현재 세션 (5h)</span>
+            <span class="row-pct" style="color:${sc}">${sp!=null ? Math.round(sp)+'%' : '<span style="opacity:.35">–</span>'}</span>
+          </div>
+          <div class="track"><div class="fill" style="width:${sp??0}%;background:${sc}"></div></div>
+          ${sess.resetsAt ? `<div class="reset">${fmtReset(sess.resetsAt)}</div>` : ''}
+        </div>
+        <div class="row">
+          <div class="row-meta">
+            <span class="row-label">주간 사용량 (7d)</span>
+            <span class="row-pct" style="color:${wc}">${wp!=null ? Math.round(wp)+'%' : '<span style="opacity:.35">–</span>'}</span>
+          </div>
+          <div class="track"><div class="fill" style="width:${wp??0}%;background:${wc}"></div></div>
+          ${week.resetsAt ? `<div class="reset">${fmtReset(week.resetsAt)}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  $('foot-time').textContent = fmtTime(latest || Date.now());
+}
+
+// ── Render Settings ───────────────────────────────────────────────────────────
+function renderSettings() {
+  // Account list
+  const list = $('acc-list');
+  list.innerHTML = S.accounts.length === 0
+    ? '<div style="font-size:10px;color:var(--muted);padding:4px 0">아직 추가된 계정이 없습니다.</div>'
+    : S.accounts.map(acc => `
+        <div class="acc-item">
+          <div style="width:10px;height:10px;border-radius:50%;background:${acc.color||'#d97706'};flex-shrink:0"></div>
+          <div class="acc-item-info">
+            <div class="acc-item-name">${esc(acc.label)}</div>
+            <div class="acc-item-key">${acc.sessionKey ? acc.sessionKey.slice(0,8)+'…'+acc.sessionKey.slice(-4) : '(키 없음)'}</div>
+          </div>
+          <button class="del-btn" onclick="removeAccount('${acc.id}')">×</button>
+        </div>`).join('');
+
+  // Debug radio
+  const dbgAccts = $('dbg-accts');
+  dbgAccts.innerHTML = S.accounts.map((acc,i) => `
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10.5px;color:var(--dim);margin-bottom:4px;">
+      <input type="radio" name="dbg-r" value="${acc.id}" ${i===0?'checked':''} style="accent-color:${acc.color||'#d97706'}">
+      <span style="color:${acc.color||'#d97706'}">●</span> ${esc(acc.label)}
+    </label>`).join('');
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function openSettings() {
+  $('settings').classList.add('on');
+  resize(480);
+  renderSettings();
+}
+function closeSettings() {
+  $('settings').classList.remove('on');
+  $('dbg-out').style.display = 'none';
+  renderMain();
+}
+
+async function addAccount() {
+  const label = $('inp-label').value.trim();
+  const key   = $('inp-key').value.trim();
+  if (!label || !key) { alert('이름과 세션 키를 입력하세요'); return; }
+  if (S.accounts.length >= 2) { alert('최대 2개 계정까지 지원합니다'); return; }
+
+  const btn = $('btn-add');
+  btn.disabled = true; btn.textContent = '추가 중…';
+
+  const newAcc = await window.claudeAPI.addAccount({ label, sessionKey: key, color: S.color });
+  S.accounts.push(newAcc);
+  $('inp-label').value = '';
+  $('inp-key').value = '';
+  btn.disabled = false; btn.textContent = '+ 계정 추가';
+  renderSettings();
+  renderMain();
+}
+
+async function removeAccount(id) {
+  await window.claudeAPI.removeAccount(id);
+  S.accounts = S.accounts.filter(a => a.id !== id);
+  delete S.usage[id];
+  renderSettings();
+  renderMain();
+}
+
+async function refreshAll() {
+  if (S.refreshing) return;
+  S.refreshing = true;
+  $('btn-refresh').classList.add('spin');
+  await window.claudeAPI.refreshAll();
+  setTimeout(() => { S.refreshing = false; $('btn-refresh').classList.remove('spin'); }, 2000);
+}
+
+// ── Debug ─────────────────────────────────────────────────────────────────────
+async function runDebug() {
+  const sel = document.querySelector('input[name="dbg-r"]:checked');
+  if (!sel) { alert('계정을 선택하세요'); return; }
+  const btn = $('btn-dbg'), out = $('dbg-out');
+  btn.disabled = true; btn.textContent = '⏳ 요청 중…';
+  out.style.display = 'none';
+
+  const r = await window.claudeAPI.getDebug(sel.value);
+  btn.disabled = false; btn.textContent = '🔍 API 응답 확인';
+
+  const d = r.debug || {};
+  const lines = [];
+
+  const statusColor = s => s === 200 ? 'var(--green)' : (s === 401||s === 403) ? 'var(--red)' : 'var(--yellow)';
+  const row = (label, info) => {
+    const short = label.length > 38 ? '…'+label.slice(-35) : label;
+    return `<div style="margin-bottom:5px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:8.5px;color:var(--muted);font-family:var(--mono)">${esc(short)}</span>
+        <span style="font-size:10px;font-weight:700;color:${statusColor(info.status)}">${info.status||'?'}</span>
+      </div>
+      ${info.raw ? `<div style="font-size:8px;color:var(--muted);word-break:break-all;line-height:1.4;opacity:.7;max-height:44px;overflow:hidden">${esc(info.raw.slice(0,130))}${info.raw.length>130?'…':''}</div>` : ''}
+    </div>`;
+  };
+
+  lines.push(`<div style="font-size:10.5px;font-weight:600;color:var(--text);margin-bottom:8px">
+    ${r.email ? '✅ '+esc(r.email) : '❌ 인증 실패'}
+    ${r.error ? '<br><span style="color:var(--red);font-size:10px">'+esc(r.error)+'</span>' : ''}
+  </div>`);
+
+  if (d.account)       lines.push(row('/api/account', d.account));
+  if (d.organizations) lines.push(row('/api/organizations', d.organizations));
+  if (d.orgUuid)       lines.push(`<div style="font-size:9px;color:var(--muted);margin:3px 0">org UUID: <span style="color:var(--accent);font-family:var(--mono)">${esc(d.orgUuid)}</span></div>`);
+  if (d.usage)         lines.push(row('/api/organizations/…/usage', d.usage));
+
+  if (r.usage) {
+    const u = r.usage;
+    lines.push(`<div style="margin-top:8px;padding:7px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:6px;font-size:9.5px">
+      <strong style="color:var(--green)">✅ 파싱 결과</strong><br>
+      세션(5h): <strong style="color:var(--text)">${u.session?.utilization??'?'}%</strong>
+        ${u.session?.resetsAt ? ' → 초기화 '+new Date(u.session.resetsAt).toLocaleTimeString('ko-KR') : ''}<br>
+      주간(7d): <strong style="color:var(--text)">${u.weekly?.utilization??'?'}%</strong>
+        ${u.weekly?.resetsAt ? ' → 초기화 '+new Date(u.weekly.resetsAt).toLocaleDateString('ko-KR') : ''}
+    </div>`);
+  }
+
+  out.innerHTML = `<div style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:10px;font-family:var(--mono)">${lines.join('')}</div>`;
+  out.style.display = 'block';
+  resize(600);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const cfg = await window.claudeAPI.getConfig();
+  S.accounts = cfg.accounts || [];
+  renderMain();
+
+  window.claudeAPI.onUsageUpdate(data => {
+    S.usage[data.id] = data;
+    renderMain();
+  });
+  window.claudeAPI.onShowSettings(() => openSettings());
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+$('btn-refresh').addEventListener('click', refreshAll);
+$('btn-settings').addEventListener('click', openSettings);
+$('btn-close-settings').addEventListener('click', closeSettings);
+$('btn-min').addEventListener('click', () => window.claudeAPI.minimize());
+$('btn-setup').addEventListener('click', openSettings);
+$('btn-add').addEventListener('click', addAccount);
+$('btn-dbg').addEventListener('click', runDebug);
+$('foot-link').addEventListener('click', () => window.claudeAPI.openClaude());
+
+$('color-row').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  chip.classList.add('on');
+  S.color = chip.dataset.c;
+});
+
+$('inp-key').addEventListener('keydown', e => { if (e.key === 'Enter') addAccount(); });
+
+init();
+</script>
+</body>
+</html>
