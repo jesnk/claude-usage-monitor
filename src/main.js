@@ -31,7 +31,7 @@ app.whenReady().then(async () => {
   await getStore();
   createMainWindow();
   createTray();
-  startPollingAll();
+  startPollingAll(true);
 });
 
 app.on('window-all-closed', () => {});
