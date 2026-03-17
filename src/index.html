@@ -32,7 +32,6 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
   background:var(--bg);
   border:1px solid var(--border);
   border-radius:var(--r);
-  box-shadow:0 8px 40px rgba(0,0,0,0.65),0 2px 8px rgba(0,0,0,0.4);
   backdrop-filter:blur(24px) saturate(1.4);
   overflow:hidden;
   position:relative;
@@ -401,6 +400,9 @@ function fmtTime(ts) {
 }
 
 function resize(h) { window.claudeAPI?.setWindowSize(340, h); }
+function autoResize() {
+  requestAnimationFrame(() => resize($('app').offsetHeight));
+}
 
 // ── Render Main ───────────────────────────────────────────────────────────────
 function renderMain() {
@@ -412,15 +414,11 @@ function renderMain() {
 
   if (!settingsOpen) {
     if (S.compact && S.accounts.length > 0) {
-      // compact: slim header + small cards, no footer
       hdr.classList.add('compact');
       $('btn-compact').classList.add('active');
-      const h = 30 + S.accounts.length * 52;
-      resize(h);
     } else {
       hdr.classList.remove('compact');
       $('btn-compact').classList.remove('active');
-      resize(S.accounts.length === 0 ? 200 : S.accounts.length === 1 ? 238 : 326);
     }
   }
 
@@ -429,6 +427,7 @@ function renderMain() {
     cards.className = 'cards';
     empty.style.display = 'flex';
     footer.style.display = 'none';
+    autoResize();
     return;
   }
 
@@ -448,6 +447,7 @@ function renderMain() {
     Object.values(S.usage).forEach(d => { if (d?.lastUpdated > latest) latest = d.lastUpdated; });
     $('foot-time').textContent = fmtTime(latest || Date.now());
   }
+  autoResize();
 }
 
 function renderFull(cards) {
@@ -589,8 +589,8 @@ function toggleCompact() {
 function openSettings() {
   $('settings').classList.add('on');
   $('hdr').classList.remove('compact');
-  resize(480);
   renderSettings();
+  autoResize();
 }
 function closeSettings() {
   $('settings').classList.remove('on');
@@ -681,7 +681,7 @@ async function runDebug() {
 
   out.innerHTML = `<div style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:10px;font-family:var(--mono)">${lines.join('')}</div>`;
   out.style.display = 'block';
-  resize(600);
+  autoResize();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -717,6 +717,12 @@ $('color-row').addEventListener('click', e => {
 });
 
 $('inp-key').addEventListener('keydown', e => { if (e.key === 'Enter') addAccount(); });
+
+// 투명 영역 클릭 통과: 마우스가 #app 위에 있을 때만 이벤트 수신
+document.addEventListener('mousemove', (e) => {
+  const overApp = !!document.elementFromPoint(e.clientX, e.clientY)?.closest('#app');
+  window.claudeAPI?.setIgnoreMouseEvents(!overApp);
+});
 
 init();
 </script>
