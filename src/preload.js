@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('claudeAPI', {
   openClaude:     (url)     => ipcRenderer.invoke('open-claude', url),
   minimize:       ()        => ipcRenderer.invoke('minimize-window'),
   setWindowSize:  (w, h)    => ipcRenderer.invoke('set-window-size', { width: w, height: h }),
+  setIgnoreMouseEvents: (ignore) => ipcRenderer.send('set-ignore-mouse-events', ignore),
 
   onUsageUpdate:  (cb) => { ipcRenderer.on('usage-update',  (_, d) => cb(d)); },
   onShowSettings: (cb) => { ipcRenderer.on('show-settings', ()    => cb());  },

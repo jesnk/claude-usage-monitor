@@ -59,6 +59,7 @@ function createMainWindow() {
   });
 
   mainWindow.setOpacity(store.get('opacity'));
+  mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.on('moved', () => {
     const [x, y] = mainWindow.getPosition();
@@ -290,3 +291,6 @@ ipcMain.handle('get-debug', async (_, id) => {
 ipcMain.handle('open-claude', async (_, url) => { shell.openExternal(url || 'https://claude.ai'); return true; });
 ipcMain.handle('set-window-size', (_, { width, height }) => { mainWindow && mainWindow.setSize(width, height); });
 ipcMain.handle('minimize-window', () => { mainWindow && mainWindow.hide(); });
+ipcMain.on('set-ignore-mouse-events', (_, ignore) => {
+  mainWindow?.setIgnoreMouseEvents(ignore, { forward: true });
+});
