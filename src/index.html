@@ -124,8 +124,8 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 .org-tag { font-size: 9px; font-weight: 500; color: var(--dim); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
 
 /* ── Compact cards ── */
-#cards.compact { padding:3px 6px 4px; gap:2px; -webkit-app-region:drag; cursor:grab; }
-#cards.compact * { -webkit-app-region:drag; cursor:grab; }
+#cards.compact { padding:3px 6px 4px; gap:2px; cursor:grab; }
+#cards.compact:active { cursor:grabbing; }
 
 .card-compact {
   background:var(--bg-card); border:1px solid var(--border);
@@ -834,6 +834,28 @@ $('org-vis-list').addEventListener('click', async (e) => {
 
 // Double-click in compact mode exits compact
 $('cards').addEventListener('dblclick', () => { if (S.compact) toggleCompact(); });
+
+// JS-based drag for compact mode (CSS drag blocks dblclick)
+{
+  let dragging = false, startX, startY;
+  $('cards').addEventListener('mousedown', (e) => {
+    if (!S.compact || e.button !== 0) return;
+    dragging = false; startX = e.screenX; startY = e.screenY;
+    const onMove = (ev) => {
+      const dx = ev.screenX - startX, dy = ev.screenY - startY;
+      if (!dragging && Math.abs(dx) + Math.abs(dy) < 4) return;
+      dragging = true;
+      startX = ev.screenX; startY = ev.screenY;
+      window.claudeAPI?.windowMove(dx, dy);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
 
 // 투명 영역 클릭 통과: 마우스가 #app 위에 있을 때만 이벤트 수신
 document.addEventListener('mousemove', (e) => {

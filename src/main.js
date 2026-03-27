@@ -324,3 +324,8 @@ ipcMain.handle('minimize-window', () => { mainWindow && mainWindow.hide(); });
 ipcMain.on('set-ignore-mouse-events', (_, ignore) => {
   mainWindow?.setIgnoreMouseEvents(ignore, { forward: true });
 });
+ipcMain.on('window-move', (_, { dx, dy }) => {
+  if (!mainWindow) return;
+  const [x, y] = mainWindow.getPosition();
+  mainWindow.setPosition(x + dx, y + dy);
+});
