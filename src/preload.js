@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('claudeAPI', {
   minimize:       ()        => ipcRenderer.invoke('minimize-window'),
   setWindowSize:  (w, h)    => ipcRenderer.invoke('set-window-size', { width: w, height: h }),
   setIgnoreMouseEvents: (ignore) => ipcRenderer.send('set-ignore-mouse-events', ignore),
+  windowMove: (dx, dy) => ipcRenderer.send('window-move', { dx, dy }),
   getHiddenOrgs:  ()          => ipcRenderer.invoke('get-hidden-orgs'),
   setOrgHidden:   (key, h)    => ipcRenderer.invoke('set-org-hidden', { key, hidden: h }),
 
