@@ -19,6 +19,7 @@ async function getStore() {
         opacity: 0.92,
         alwaysOnTop: true,
         pollInterval: 60000,
+        hiddenOrgs: {},
       }
     });
   }
@@ -165,39 +166,57 @@ async function fetchFullUsage(account) {
     debug.organizations = { status: orgsRes.status, raw: orgsRes.raw };
 
     const orgs = Array.isArray(orgsRes.data) ? orgsRes.data : [];
-    const org = orgs.find(o => o.is_primary_owner) || orgs[0];
-    const orgUuid = org ? org.uuid : null;
-    debug.orgUuid = orgUuid;
 
-    if (!orgUuid) {
-      return { id, label, email, error: 'Organization UUID를 찾을 수 없어요', debug };
+    if (orgs.length === 0) {
+      return { id, label, email, error: 'Organization을 찾을 수 없어요', debug };
     }
 
-    // 3) /api/organizations/{uuid}/usage
-    const usageRes = await fetchWithSessionKey('/api/organizations/' + orgUuid + '/usage', sessionKey, id);
-    debug.usage = { status: usageRes.status, raw: usageRes.raw };
+    // 3) Fetch usage for ALL organizations
+    const orgResults = [];
+    for (const org of orgs) {
+      const orgUuid = org.uuid;
+      if (!orgUuid) continue;
 
-    if (usageRes.status !== 200 || !usageRes.data) {
-      return { id, label, email, orgUuid, error: 'Usage API ' + usageRes.status, debug, lastUpdated: Date.now() };
+      const usageRes = await fetchWithSessionKey('/api/organizations/' + orgUuid + '/usage', sessionKey, id);
+      debug['usage_' + (org.name || orgUuid)] = { status: usageRes.status, raw: usageRes.raw };
+
+      const flags = org.active_flags || [];
+      const plan = flags.find(f => /pro|team|free/i.test(f)) || org.rate_limit_tier || '?';
+      const orgName = org.name || '';
+
+      if (usageRes.status === 200 && usageRes.data) {
+        const u = usageRes.data;
+        orgResults.push({
+          orgUuid, plan, orgName,
+          usage: {
+            session: {
+              utilization: (u.five_hour && u.five_hour.utilization != null) ? u.five_hour.utilization : null,
+              resetsAt:    (u.five_hour && u.five_hour.resets_at) ? u.five_hour.resets_at : null,
+            },
+            weekly: {
+              utilization: (u.seven_day && u.seven_day.utilization != null) ? u.seven_day.utilization : null,
+              resetsAt:    (u.seven_day && u.seven_day.resets_at) ? u.seven_day.resets_at : null,
+            },
+            extra: u.extra_usage || null,
+          },
+        });
+      } else {
+        // Skip orgs where usage API is inaccessible (e.g. 403 for evaluation/special orgs)
+        debug['skipped_' + (org.name || orgUuid)] = 'Usage API ' + usageRes.status;
+      }
     }
 
-    const u = usageRes.data;
-    const flags = (org && org.active_flags) || [];
-    const plan = flags.find(f => /pro|team|free/i.test(f)) || (org && org.rate_limit_tier) || '?';
+    if (orgResults.length === 0) {
+      return { id, label, email, error: '접근 가능한 Organization이 없습니다', debug, lastUpdated: Date.now() };
+    }
 
+    const primary = orgResults[0] || {};
     return {
-      id, label, email, orgUuid, plan,
-      usage: {
-        session: {
-          utilization: (u.five_hour && u.five_hour.utilization != null) ? u.five_hour.utilization : null,
-          resetsAt:    (u.five_hour && u.five_hour.resets_at)           ? u.five_hour.resets_at   : null,
-        },
-        weekly: {
-          utilization: (u.seven_day && u.seven_day.utilization != null) ? u.seven_day.utilization : null,
-          resetsAt:    (u.seven_day && u.seven_day.resets_at)           ? u.seven_day.resets_at   : null,
-        },
-        extra: u.extra_usage || null,
-      },
+      id, label, email,
+      orgUuid: primary.orgUuid,
+      plan: primary.plan,
+      usage: primary.usage || null,
+      orgs: orgResults,
       debug,
       lastUpdated: Date.now(),
       error: null,
@@ -231,7 +250,7 @@ async function startPollingAll(immediate) {
 
 ipcMain.handle('get-config', async () => {
   const s = await getStore();
-  return { accounts: s.get('accounts'), opacity: s.get('opacity'), alwaysOnTop: s.get('alwaysOnTop'), pollInterval: s.get('pollInterval') };
+  return { accounts: s.get('accounts'), opacity: s.get('opacity'), alwaysOnTop: s.get('alwaysOnTop'), pollInterval: s.get('pollInterval'), hiddenOrgs: s.get('hiddenOrgs') };
 });
 
 ipcMain.handle('save-config', async (_, config) => {
@@ -276,6 +295,17 @@ ipcMain.handle('update-account', async (_, account) => {
     pollIntervals[account.id] = setInterval(() => pollAccount(account), s.get('pollInterval') || 60000);
   }
   return true;
+});
+
+ipcMain.handle('get-hidden-orgs', async () => {
+  return (await getStore()).get('hiddenOrgs') || {};
+});
+ipcMain.handle('set-org-hidden', async (_, { key, hidden }) => {
+  const s = await getStore();
+  const map = s.get('hiddenOrgs') || {};
+  if (hidden) map[key] = true; else delete map[key];
+  s.set('hiddenOrgs', map);
+  return map;
 });
 
 ipcMain.handle('refresh-all', async () => { await startPollingAll(true); return true; });

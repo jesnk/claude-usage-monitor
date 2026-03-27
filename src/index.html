@@ -70,8 +70,10 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 @keyframes spin { to { transform:rotate(360deg); } }
 
 /* ── Compact header (no title) ── */
-.hdr.compact { padding:5px 8px; border-bottom:none; }
+.hdr.compact { padding:2px 6px; border-bottom:none; min-height:0; }
 .hdr.compact .hdr-left { display:none; }
+.hdr.compact .hdr-actions { gap:1px; }
+.hdr.compact .ibtn { width:18px; height:18px; }
 
 /* ── Cards (normal) ── */
 #cards { padding:8px 10px 10px; display:flex; flex-direction:column; gap:7px; }
@@ -117,25 +119,42 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 .reset { font-size:9.5px; color:var(--muted); font-family:var(--mono); text-align:right; }
 .err-msg { font-size:10.5px; color:var(--red); font-family:var(--mono); padding:3px 0; line-height:1.5; }
 
+/* ── Org groups (multi-org) ── */
+.org-group + .org-group { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.org-tag { font-size: 9px; font-weight: 500; color: var(--dim); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+
 /* ── Compact cards ── */
-#cards.compact { padding:4px 8px 6px; gap:4px; }
+#cards.compact { padding:3px 6px 4px; gap:2px; -webkit-app-region:drag; cursor:grab; }
 
 .card-compact {
   background:var(--bg-card); border:1px solid var(--border);
-  border-radius:8px; padding:6px 10px 6px 13px;
+  border-radius:6px; padding:3px 8px 3px 10px;
   position:relative; overflow:hidden;
-  display:flex; align-items:center; gap:10px;
+  display:flex; align-items:center; gap:6px;
 }
 .card-compact::before {
-  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
-  border-radius:3px 0 0 3px; background:var(--clr,var(--accent));
+  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
+  border-radius:2px 0 0 2px; background:var(--clr,var(--accent));
 }
-.cc-left { display:flex; align-items:center; gap:5px; min-width:0; flex-shrink:0; }
-.cc-name { font-size:11px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:50px; }
-.cc-bars { flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
-.cc-bar-row { display:flex; align-items:center; gap:6px; }
-.cc-pct { font-size:10px; font-family:var(--mono); font-weight:600; min-width:30px; text-align:right; flex-shrink:0; }
-.cc-label { font-size:8.5px; color:var(--muted); min-width:20px; text-align:right; flex-shrink:0; }
+.cc-name {
+  font-size:9.5px; font-weight:600; color:var(--dim);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  min-width:36px; max-width:52px; flex-shrink:0;
+}
+.cc-pct {
+  font-size:9.5px; font-family:var(--mono); font-weight:600;
+  min-width:28px; text-align:right; flex-shrink:0;
+}
+.cc-bars { flex:1; display:flex; flex-direction:column; gap:1px; min-width:0; }
+.cc-bar-row { display:flex; align-items:center; gap:4px; }
+.cc-track {
+  flex:1; height:3px; background:rgba(255,255,255,0.08);
+  border-radius:99px; overflow:hidden; min-width:0;
+}
+.cc-fill {
+  height:100%; border-radius:99px;
+  transition:width .8s cubic-bezier(.4,0,.2,1);
+}
 
 /* ── Empty ── */
 #empty {
@@ -247,6 +266,23 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
   transition:all .15s;
 }
 .dbg-btn:hover { background:rgba(124,58,237,.2); }
+
+/* Org visibility toggles */
+.org-vis-item {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 8px; margin-bottom:4px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:6px; cursor:pointer; transition:border-color .15s;
+}
+.org-vis-item:hover { border-color:var(--border2); }
+.org-vis-check {
+  width:16px; height:16px; border-radius:4px;
+  border:1.5px solid var(--border2); background:transparent;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; color:var(--green); flex-shrink:0;
+  transition:all .15s;
+}
+.org-vis-check.on { background:rgba(16,185,129,.15); border-color:var(--green); }
 .dbg-btn:disabled { opacity:.4; cursor:not-allowed; }
 #dbg-out { display:none; margin-top:10px; }
 
@@ -324,6 +360,12 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
         <div id="acc-list"></div>
       </div>
 
+      <!-- Org Visibility -->
+      <div>
+        <div class="s-section-title">표시할 Organization</div>
+        <div id="org-vis-list" style="font-size:10.5px;color:var(--muted);padding:4px 0">데이터를 불러오면 Organization이 표시됩니다.</div>
+      </div>
+
       <!-- Add Account -->
       <div>
         <div class="s-section-title">계정 추가 (최대 2개)</div>
@@ -371,11 +413,15 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
-const S = { accounts: [], usage: {}, color: '#d97706', refreshing: false, compact: false };
+const S = { accounts: [], usage: {}, color: '#d97706', refreshing: false, compact: false, hiddenOrgs: {} };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function visibleOrgs(accountId, orgs) {
+  return orgs.filter(org => !S.hiddenOrgs[accountId + ':' + org.orgUuid]);
+}
 
 function barColor(pct) {
   if (pct == null) return 'rgba(255,255,255,0.18)';
@@ -414,11 +460,10 @@ function renderMain() {
 
   if (!settingsOpen) {
     if (S.compact && S.accounts.length > 0) {
-      hdr.classList.add('compact');
-      $('btn-compact').classList.add('active');
+      hdr.style.display = 'none';
     } else {
+      hdr.style.display = '';
       hdr.classList.remove('compact');
-      $('btn-compact').classList.remove('active');
     }
   }
 
@@ -475,37 +520,44 @@ function renderFull(cards) {
       </div>`;
     }
 
-    const sess = data.usage?.session || {};
-    const week = data.usage?.weekly  || {};
-    const sp   = sess.utilization;
-    const wp   = week.utilization;
-    const sc   = barColor(sp);
-    const wc   = barColor(wp);
-    const plan = data.plan && data.plan !== '?' ? `<span class="plan-tag">${esc(data.plan)}</span>` : '';
+    const allOrgs = data.orgs && data.orgs.length > 0 ? data.orgs : (data.usage ? [{ plan: data.plan, orgName: '', usage: data.usage }] : []);
+    const orgs = visibleOrgs(acc.id, allOrgs);
+    if (orgs.length === 0) return '';
+    const multi = orgs.length > 1;
+    const headerPlan = !multi && orgs[0]?.plan && orgs[0].plan !== '?' ? `<span class="plan-tag">${esc(orgs[0].plan)}</span>` : '';
 
     return `<div class="card" style="--clr:${color}">
       <div class="card-hdr">
-        <div class="card-name"><div class="dot"></div>${esc(acc.label)}${plan}</div>
+        <div class="card-name"><div class="dot"></div>${esc(acc.label)}${headerPlan}</div>
         <div class="card-email">${esc(data.email||'')}</div>
       </div>
-      <div class="rows">
-        <div class="row">
-          <div class="row-meta">
-            <span class="row-label">세션 (5h)</span>
-            <span class="row-pct" style="color:${sc}">${sp!=null ? Math.round(sp)+'%' : '<span style="opacity:.4">–</span>'}</span>
+      <div class="rows">${orgs.map(org => {
+        if (org.error) return `<div class="org-group">${multi ? `<div class="org-tag">${esc(org.orgName||'?')} <span class="plan-tag">${esc(org.plan||'?')}</span></div>` : ''}<div class="err-msg">⚠ ${esc(org.error)}</div></div>`;
+        const sess = org.usage?.session || {};
+        const week = org.usage?.weekly || {};
+        const sp = sess.utilization, wp = week.utilization;
+        const sc = barColor(sp), wc = barColor(wp);
+        const orgLabel = multi ? `<div class="org-tag">${esc(org.orgName||'?')} <span class="plan-tag">${esc(org.plan||'?')}</span></div>` : '';
+        return `<div class="org-group">
+          ${orgLabel}
+          <div class="row">
+            <div class="row-meta">
+              <span class="row-label">세션 (5h)</span>
+              <span class="row-pct" style="color:${sc}">${sp!=null ? Math.round(sp)+'%' : '<span style="opacity:.4">–</span>'}</span>
+            </div>
+            <div class="track"><div class="fill" style="width:${sp??0}%;background:${sc}"></div></div>
+            ${sess.resetsAt ? `<div class="reset">${fmtReset(sess.resetsAt)}</div>` : ''}
           </div>
-          <div class="track"><div class="fill" style="width:${sp??0}%;background:${sc}"></div></div>
-          ${sess.resetsAt ? `<div class="reset">${fmtReset(sess.resetsAt)}</div>` : ''}
-        </div>
-        <div class="row">
-          <div class="row-meta">
-            <span class="row-label">주간 (7d)</span>
-            <span class="row-pct" style="color:${wc}">${wp!=null ? Math.round(wp)+'%' : '<span style="opacity:.4">–</span>'}</span>
+          <div class="row">
+            <div class="row-meta">
+              <span class="row-label">주간 (7d)</span>
+              <span class="row-pct" style="color:${wc}">${wp!=null ? Math.round(wp)+'%' : '<span style="opacity:.4">–</span>'}</span>
+            </div>
+            <div class="track"><div class="fill" style="width:${wp??0}%;background:${wc}"></div></div>
+            ${week.resetsAt ? `<div class="reset">${fmtReset(week.resetsAt)}</div>` : ''}
           </div>
-          <div class="track"><div class="fill" style="width:${wp??0}%;background:${wc}"></div></div>
-          ${week.resetsAt ? `<div class="reset">${fmtReset(week.resetsAt)}</div>` : ''}
-        </div>
-      </div>
+        </div>`;
+      }).join('')}</div>
     </div>`;
   }).join('');
 }
@@ -517,43 +569,51 @@ function renderCompact(cards) {
 
     if (!data) {
       return `<div class="card-compact" style="--clr:${color}">
-        <div class="cc-left"><div class="dot wait"></div><span class="cc-name">${esc(acc.label)}</span></div>
-        <div class="cc-bars">
-          <div class="cc-bar-row"><span class="cc-pct shimmer" style="color:var(--muted)">…</span><div class="track" style="flex:1"><div class="fill shimmer" style="width:30%;background:rgba(255,255,255,0.1)"></div></div></div>
-          <div class="cc-bar-row"><span class="cc-pct shimmer" style="color:var(--muted)">…</span><div class="track" style="flex:1"></div></div>
-        </div>
+        <span class="cc-name">${esc(acc.label)}</span>
+        <span class="cc-pct shimmer" style="color:var(--muted)">…</span>
+        <div class="cc-track"><div class="cc-fill shimmer" style="width:30%;background:rgba(255,255,255,0.1)"></div></div>
       </div>`;
     }
 
     if (data.error) {
       return `<div class="card-compact" style="--clr:${color}">
-        <div class="cc-left"><div class="dot err"></div><span class="cc-name">${esc(acc.label)}</span></div>
-        <div style="font-size:9.5px;color:var(--red);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">⚠ ${esc(data.error)}</div>
+        <span class="cc-name">${esc(acc.label)}</span>
+        <span style="font-size:8.5px;color:var(--red);">⚠</span>
       </div>`;
     }
 
-    const sess = data.usage?.session || {};
-    const week = data.usage?.weekly  || {};
-    const sp   = sess.utilization;
-    const wp   = week.utilization;
-    const sc   = barColor(sp);
-    const wc   = barColor(wp);
+    const allOrgs = data.orgs && data.orgs.length > 0 ? data.orgs : (data.usage ? [{ plan: data.plan, orgName: '', usage: data.usage }] : []);
+    const orgs = visibleOrgs(acc.id, allOrgs);
+    if (orgs.length === 0) return '';
+    const multi = orgs.length > 1;
 
-    return `<div class="card-compact" style="--clr:${color}">
-      <div class="cc-left"><div class="dot"></div><span class="cc-name">${esc(acc.label)}</span></div>
-      <div class="cc-bars">
-        <div class="cc-bar-row">
-          <span class="cc-label">5h</span>
-          <span class="cc-pct" style="color:${sc}">${sp!=null ? Math.round(sp)+'%' : '–'}</span>
-          <div class="track" style="flex:1"><div class="fill" style="width:${sp??0}%;background:${sc}"></div></div>
+    return orgs.map(org => {
+      if (org.error) {
+        return `<div class="card-compact" style="--clr:${color}">
+          <span class="cc-name">${esc(multi ? (org.orgName||'?') : acc.label)}</span>
+          <span style="font-size:8.5px;color:var(--red);">⚠</span>
+        </div>`;
+      }
+      const sp = org.usage?.session?.utilization;
+      const wp = org.usage?.weekly?.utilization;
+      const sc = barColor(sp);
+      const wc = barColor(wp);
+      const nameLabel = multi ? (org.orgName || acc.label) : acc.label;
+
+      return `<div class="card-compact" style="--clr:${color}">
+        <span class="cc-name">${esc(nameLabel)}</span>
+        <div class="cc-bars">
+          <div class="cc-bar-row">
+            <span class="cc-pct" style="color:${sc}">${sp!=null ? Math.round(sp)+'%' : '–'}</span>
+            <div class="cc-track"><div class="cc-fill" style="width:${sp??0}%;background:${sc}"></div></div>
+          </div>
+          <div class="cc-bar-row">
+            <span class="cc-pct" style="color:${wc}">${wp!=null ? Math.round(wp)+'%' : '–'}</span>
+            <div class="cc-track"><div class="cc-fill" style="width:${wp??0}%;background:${wc}"></div></div>
+          </div>
         </div>
-        <div class="cc-bar-row">
-          <span class="cc-label">7d</span>
-          <span class="cc-pct" style="color:${wc}">${wp!=null ? Math.round(wp)+'%' : '–'}</span>
-          <div class="track" style="flex:1"><div class="fill" style="width:${wp??0}%;background:${wc}"></div></div>
-        </div>
-      </div>
-    </div>`;
+      </div>`;
+    }).join('');
   }).join('');
 }
 
@@ -578,6 +638,27 @@ function renderSettings() {
       <input type="radio" name="dbg-r" value="${acc.id}" ${i===0?'checked':''} style="accent-color:${acc.color||'#d97706'}">
       <span style="color:${acc.color||'#d97706'}">●</span> ${esc(acc.label)}
     </label>`).join('');
+
+  // Org visibility
+  const orgVisList = $('org-vis-list');
+  const orgItems = [];
+  for (const acc of S.accounts) {
+    const data = S.usage[acc.id];
+    if (!data || !data.orgs || data.orgs.length === 0) continue;
+    for (const org of data.orgs) {
+      const key = acc.id + ':' + org.orgUuid;
+      const isVis = !S.hiddenOrgs[key];
+      orgItems.push(`<div class="org-vis-item" data-key="${esc(key)}">
+        <div class="org-vis-check ${isVis ? 'on' : ''}">${isVis ? '✓' : ''}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10.5px;color:var(--text)">${esc(org.orgName || org.orgUuid)}</div>
+          <div style="font-size:8.5px;color:var(--muted)">${esc(acc.label)} · ${esc(org.plan || '?')}</div>
+        </div>
+      </div>`);
+    }
+  }
+  orgVisList.innerHTML = orgItems.length > 0 ? orgItems.join('')
+    : '<div style="font-size:10.5px;color:var(--muted);padding:4px 0">데이터를 불러오면 Organization이 표시됩니다.</div>';
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -588,6 +669,7 @@ function toggleCompact() {
 
 function openSettings() {
   $('settings').classList.add('on');
+  $('hdr').style.display = '';
   $('hdr').classList.remove('compact');
   renderSettings();
   autoResize();
@@ -665,18 +747,37 @@ async function runDebug() {
 
   if (d.account)       lines.push(row('/api/account', d.account));
   if (d.organizations) lines.push(row('/api/organizations', d.organizations));
-  if (d.orgUuid)       lines.push(`<div style="font-size:9px;color:var(--dim);margin:3px 0">org UUID: <span style="color:var(--accent);font-family:var(--mono)">${esc(d.orgUuid)}</span></div>`);
-  if (d.usage)         lines.push(row('/api/organizations/…/usage', d.usage));
 
-  if (r.usage) {
-    const u = r.usage;
-    lines.push(`<div style="margin-top:8px;padding:7px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:6px;font-size:9.5px">
-      <strong style="color:var(--green)">✅ 파싱 결과</strong><br>
-      세션(5h): <strong style="color:var(--text)">${u.session?.utilization??'?'}%</strong>
-        ${u.session?.resetsAt ? ' → 초기화 '+new Date(u.session.resetsAt).toLocaleTimeString('ko-KR') : ''}<br>
-      주간(7d): <strong style="color:var(--text)">${u.weekly?.utilization??'?'}%</strong>
-        ${u.weekly?.resetsAt ? ' → 초기화 '+new Date(u.weekly.resetsAt).toLocaleDateString('ko-KR') : ''}
-    </div>`);
+  if (r.orgs && r.orgs.length > 0) {
+    r.orgs.forEach(org => {
+      const usageKey = 'usage_' + (org.orgName || org.orgUuid);
+      lines.push(`<div style="font-size:9px;color:var(--dim);margin:5px 0 2px;border-top:1px solid var(--border);padding-top:4px">── ${esc(org.orgName||'?')} <span style="color:var(--accent)">${esc(org.plan||'?')}</span> ──</div>`);
+      lines.push(`<div style="font-size:9px;color:var(--dim);margin:1px 0">UUID: <span style="color:var(--accent);font-family:var(--mono)">${esc(org.orgUuid||'?')}</span></div>`);
+      if (d[usageKey]) lines.push(row('/api/organizations/…/usage', d[usageKey]));
+      if (org.usage) {
+        const u = org.usage;
+        lines.push(`<div style="padding:5px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:6px;font-size:9px;margin:3px 0">
+          세션(5h): <strong style="color:var(--text)">${u.session?.utilization??'?'}%</strong>
+          ${u.session?.resetsAt ? ' → '+new Date(u.session.resetsAt).toLocaleTimeString('ko-KR') : ''} |
+          주간(7d): <strong style="color:var(--text)">${u.weekly?.utilization??'?'}%</strong>
+          ${u.weekly?.resetsAt ? ' → '+new Date(u.weekly.resetsAt).toLocaleDateString('ko-KR') : ''}
+        </div>`);
+      }
+      if (org.error) lines.push(`<div style="font-size:9px;color:var(--red);margin:2px 0">⚠ ${esc(org.error)}</div>`);
+    });
+  } else {
+    if (d.orgUuid) lines.push(`<div style="font-size:9px;color:var(--dim);margin:3px 0">org UUID: <span style="color:var(--accent);font-family:var(--mono)">${esc(d.orgUuid)}</span></div>`);
+    if (d.usage) lines.push(row('/api/organizations/…/usage', d.usage));
+    if (r.usage) {
+      const u = r.usage;
+      lines.push(`<div style="margin-top:8px;padding:7px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:6px;font-size:9.5px">
+        <strong style="color:var(--green)">✅ 파싱 결과</strong><br>
+        세션(5h): <strong style="color:var(--text)">${u.session?.utilization??'?'}%</strong>
+          ${u.session?.resetsAt ? ' → 초기화 '+new Date(u.session.resetsAt).toLocaleTimeString('ko-KR') : ''}<br>
+        주간(7d): <strong style="color:var(--text)">${u.weekly?.utilization??'?'}%</strong>
+          ${u.weekly?.resetsAt ? ' → 초기화 '+new Date(u.weekly.resetsAt).toLocaleDateString('ko-KR') : ''}
+      </div>`);
+    }
   }
 
   out.innerHTML = `<div style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:10px;font-family:var(--mono)">${lines.join('')}</div>`;
@@ -688,6 +789,7 @@ async function runDebug() {
 async function init() {
   const cfg = await window.claudeAPI.getConfig();
   S.accounts = cfg.accounts || [];
+  S.hiddenOrgs = cfg.hiddenOrgs || {};
   renderMain();
 
   window.claudeAPI.onUsageUpdate(data => {
@@ -717,6 +819,20 @@ $('color-row').addEventListener('click', e => {
 });
 
 $('inp-key').addEventListener('keydown', e => { if (e.key === 'Enter') addAccount(); });
+
+// Org visibility toggle
+$('org-vis-list').addEventListener('click', async (e) => {
+  const item = e.target.closest('.org-vis-item');
+  if (!item) return;
+  const key = item.dataset.key;
+  const currentlyHidden = !!S.hiddenOrgs[key];
+  S.hiddenOrgs = await window.claudeAPI.setOrgHidden(key, !currentlyHidden);
+  renderSettings();
+  renderMain();
+});
+
+// Double-click in compact mode exits compact
+$('cards').addEventListener('dblclick', () => { if (S.compact) toggleCompact(); });
 
 // 투명 영역 클릭 통과: 마우스가 #app 위에 있을 때만 이벤트 수신
 document.addEventListener('mousemove', (e) => {
