@@ -1,4 +1,19 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
+
+// Zoom shortcuts: Ctrl+= (zoom in), Ctrl+- (zoom out), Ctrl+0 (reset)
+window.addEventListener('keydown', (e) => {
+  if (!e.ctrlKey) return;
+  if (e.key === '=' || e.key === '+') {
+    e.preventDefault();
+    webFrame.setZoomFactor(Math.min(webFrame.getZoomFactor() + 0.1, 3.0));
+  } else if (e.key === '-') {
+    e.preventDefault();
+    webFrame.setZoomFactor(Math.max(webFrame.getZoomFactor() - 0.1, 0.3));
+  } else if (e.key === '0') {
+    e.preventDefault();
+    webFrame.setZoomFactor(1.0);
+  }
+});
 
 contextBridge.exposeInMainWorld('claudeAPI', {
   getConfig:      ()        => ipcRenderer.invoke('get-config'),
