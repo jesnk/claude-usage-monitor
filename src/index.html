@@ -6,13 +6,13 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:      rgba(10,10,14,0.93);
-  --bg-card: rgba(20,20,28,0.96);
-  --border:  rgba(255,255,255,0.10);
-  --border2: rgba(255,255,255,0.18);
-  --text:    #f0f0f8;
-  --dim:     #a8a8c4;
-  --muted:   #7878a0;
+  --bg:      rgba(8,8,8,0.94);
+  --bg-card: rgba(18,18,18,0.96);
+  --border:  rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text:    #e8e8e8;
+  --dim:     #a0a0a0;
+  --muted:   #686868;
   --accent:  #d97706;
   --green:   #10b981;
   --yellow:  #f59e0b;
@@ -26,19 +26,20 @@
 * { box-sizing:border-box; margin:0; padding:0; -webkit-app-region:no-drag; user-select:none; }
 
 body { width:340px; background:transparent; font-family:var(--sans); overflow:hidden; }
+body.tiny { width:auto; }
 
 #app {
   width:340px;
   background:var(--bg);
   border:1px solid var(--border);
   border-radius:var(--r);
-  backdrop-filter:blur(24px) saturate(1.4);
+  backdrop-filter:blur(24px) saturate(1.2);
   overflow:hidden;
   position:relative;
 }
 #app::before {
   content:''; position:absolute; inset:0; border-radius:var(--r);
-  background:linear-gradient(135deg,rgba(217,119,6,0.04) 0%,transparent 40%,rgba(124,58,237,0.03) 100%);
+  background:transparent;
   pointer-events:none;
 }
 
@@ -52,7 +53,7 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 .hdr-left { display:flex; align-items:center; gap:7px; }
 .logo {
   width:18px; height:18px; border-radius:5px;
-  background:linear-gradient(135deg,#d97706,#7c3aed);
+  background:linear-gradient(135deg,#d97706,#b45309);
   display:flex; align-items:center; justify-content:center;
   font-size:10px; font-weight:700; color:#fff;
 }
@@ -109,8 +110,8 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 .row  { display:flex; flex-direction:column; gap:3px; }
 .row-meta { display:flex; justify-content:space-between; align-items:center; }
 .row-label { font-size:10px; font-weight:500; letter-spacing:.05em; text-transform:uppercase; color:var(--dim); }
-.row-pct   { font-size:12px; font-family:var(--mono); font-weight:600; }
-.track { height:5px; background:rgba(255,255,255,0.08); border-radius:99px; overflow:hidden; }
+.row-pct   { font-size:15px; font-family:var(--mono); font-weight:700; }
+.track { height:5px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; max-width:160px; }
 .fill  { height:100%; border-radius:99px; transition:width .8s cubic-bezier(.4,0,.2,1); position:relative; }
 .fill::after {
   content:''; position:absolute; right:0; top:0; bottom:0; width:18px;
@@ -143,8 +144,8 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
   min-width:36px; max-width:52px; flex-shrink:0;
 }
 .cc-pct {
-  font-size:9.5px; font-family:var(--mono); font-weight:600;
-  min-width:28px; text-align:right; flex-shrink:0;
+  font-size:13px; font-family:var(--mono); font-weight:700;
+  min-width:34px; text-align:right; flex-shrink:0;
 }
 .cc-bars { flex:1; display:flex; flex-direction:column; gap:1px; min-width:0; }
 .cc-bar-row { display:flex; align-items:center; gap:4px; }
@@ -156,6 +157,32 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
   height:100%; border-radius:99px;
   transition:width .8s cubic-bezier(.4,0,.2,1);
 }
+
+/* ── Tiny cards ── */
+body.tiny #app { width:auto; display:inline-block; }
+
+#cards.tiny { padding:3px 6px 4px; gap:2px; cursor:grab; }
+#cards.tiny:active { cursor:grabbing; }
+
+.card-tiny {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:6px; padding:2px 8px 2px 10px;
+  position:relative; overflow:hidden;
+  display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+}
+.card-tiny::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
+  border-radius:2px 0 0 2px; background:var(--clr,var(--accent));
+}
+.ct-name {
+  font-size:9px; font-weight:600; color:var(--dim);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  min-width:30px; max-width:44px; flex-shrink:0;
+}
+.ct-vals { display:flex; align-items:center; gap:8px; }
+.ct-item { display:flex; align-items:center; gap:3px; }
+.ct-label { font-size:7.5px; font-weight:500; color:var(--muted); text-transform:uppercase; }
+.ct-pct { font-size:12px; font-family:var(--mono); font-weight:700; }
 
 /* ── Empty ── */
 #empty {
@@ -292,7 +319,7 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 .shimmer { animation:shimmer 1.5s ease-in-out infinite; }
 
 ::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:99px; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.10); border-radius:99px; }
 </style>
 </head>
 <body>
@@ -414,7 +441,7 @@ body { width:340px; background:transparent; font-family:var(--sans); overflow:hi
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
-const S = { accounts: [], usage: {}, color: '#d97706', refreshing: false, compact: false, hiddenOrgs: {} };
+const S = { accounts: [], usage: {}, color: '#d97706', refreshing: false, mode: 'normal', hiddenOrgs: {} };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -446,9 +473,12 @@ function fmtTime(ts) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')} 업데이트`;
 }
 
-function resize(h) { window.claudeAPI?.setWindowSize(340, h); }
+function resize(w, h) { window.claudeAPI?.setWindowSize(w, h); }
 function autoResize() {
-  requestAnimationFrame(() => resize($('app').offsetHeight));
+  requestAnimationFrame(() => {
+    const app = $('app');
+    resize(app.offsetWidth, app.offsetHeight);
+  });
 }
 
 // ── Render Main ───────────────────────────────────────────────────────────────
@@ -459,8 +489,10 @@ function renderMain() {
   const hdr    = $('hdr');
   const settingsOpen = $('settings').classList.contains('on');
 
+  document.body.classList.toggle('tiny', S.mode === 'tiny');
+
   if (!settingsOpen) {
-    if (S.compact && S.accounts.length > 0) {
+    if (S.mode !== 'normal' && S.accounts.length > 0) {
       hdr.style.display = 'none';
     } else {
       hdr.style.display = '';
@@ -479,11 +511,16 @@ function renderMain() {
 
   empty.style.display = 'none';
 
-  if (S.compact) {
+  if (S.mode === 'compact') {
     footer.style.display = 'none';
     cards.className = 'compact';
     cards.id = 'cards';
     renderCompact(cards);
+  } else if (S.mode === 'tiny') {
+    footer.style.display = 'none';
+    cards.className = 'tiny';
+    cards.id = 'cards';
+    renderTiny(cards);
   } else {
     footer.style.display = 'flex';
     cards.className = '';
@@ -618,6 +655,60 @@ function renderCompact(cards) {
   }).join('');
 }
 
+function renderTiny(cards) {
+  cards.innerHTML = S.accounts.map(acc => {
+    const data  = S.usage[acc.id];
+    const color = acc.color || '#d97706';
+
+    if (!data) {
+      return `<div class="card-tiny" style="--clr:${color}">
+        <span class="ct-name">${esc(acc.label)}</span>
+        <span class="ct-pct shimmer" style="color:var(--muted)">…</span>
+      </div>`;
+    }
+
+    if (data.error) {
+      return `<div class="card-tiny" style="--clr:${color}">
+        <span class="ct-name">${esc(acc.label)}</span>
+        <span style="font-size:8.5px;color:var(--red);">⚠</span>
+      </div>`;
+    }
+
+    const allOrgs = data.orgs && data.orgs.length > 0 ? data.orgs : (data.usage ? [{ plan: data.plan, orgName: '', usage: data.usage }] : []);
+    const orgs = visibleOrgs(acc.id, allOrgs);
+    if (orgs.length === 0) return '';
+    const multi = orgs.length > 1;
+
+    return orgs.map(org => {
+      if (org.error) {
+        return `<div class="card-tiny" style="--clr:${color}">
+          <span class="ct-name">${esc(multi ? (org.orgName||'?') : acc.label)}</span>
+          <span style="font-size:8.5px;color:var(--red);">⚠</span>
+        </div>`;
+      }
+      const sp = org.usage?.session?.utilization;
+      const wp = org.usage?.weekly?.utilization;
+      const sc = barColor(sp);
+      const wc = barColor(wp);
+      const nameLabel = multi ? (org.orgName || acc.label) : acc.label;
+
+      return `<div class="card-tiny" style="--clr:${color}">
+        <span class="ct-name">${esc(nameLabel)}</span>
+        <div class="ct-vals">
+          <div class="ct-item">
+            <span class="ct-label">5h</span>
+            <span class="ct-pct" style="color:${sc}">${sp!=null ? Math.round(sp)+'%' : '–'}</span>
+          </div>
+          <div class="ct-item">
+            <span class="ct-label">7d</span>
+            <span class="ct-pct" style="color:${wc}">${wp!=null ? Math.round(wp)+'%' : '–'}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }).join('');
+}
+
 // ── Render Settings ───────────────────────────────────────────────────────────
 function renderSettings() {
   const list = $('acc-list');
@@ -664,7 +755,9 @@ function renderSettings() {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 function toggleCompact() {
-  S.compact = !S.compact;
+  if (S.mode === 'normal') S.mode = 'compact';
+  else if (S.mode === 'compact') S.mode = 'tiny';
+  else S.mode = 'normal';
   renderMain();
 }
 
@@ -832,14 +925,14 @@ $('org-vis-list').addEventListener('click', async (e) => {
   renderMain();
 });
 
-// Double-click in compact mode exits compact
-$('cards').addEventListener('dblclick', () => { if (S.compact) toggleCompact(); });
+// Double-click in compact/tiny mode cycles to next mode
+$('cards').addEventListener('dblclick', () => { if (S.mode !== 'normal') toggleCompact(); });
 
 // JS-based drag for compact mode (CSS drag blocks dblclick)
 {
   let dragging = false, startX, startY;
   $('cards').addEventListener('mousedown', (e) => {
-    if (!S.compact || e.button !== 0) return;
+    if (S.mode === 'normal' || e.button !== 0) return;
     dragging = false; startX = e.screenX; startY = e.screenY;
     const onMove = (ev) => {
       const dx = ev.screenX - startX, dy = ev.screenY - startY;

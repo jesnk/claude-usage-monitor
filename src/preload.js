@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
+// Default zoom
+webFrame.setZoomFactor(1.2);
+
 // Zoom shortcuts: Ctrl+= (zoom in), Ctrl+- (zoom out), Ctrl+0 (reset)
 window.addEventListener('keydown', (e) => {
   if (!e.ctrlKey) return;
