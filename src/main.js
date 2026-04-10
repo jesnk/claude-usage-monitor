@@ -60,6 +60,7 @@ function createMainWindow() {
   });
 
   mainWindow.setOpacity(store.get('opacity'));
+  if (store.get('alwaysOnTop')) mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.on('moved', () => {
@@ -256,7 +257,7 @@ ipcMain.handle('get-config', async () => {
 ipcMain.handle('save-config', async (_, config) => {
   const s = await getStore();
   if (config.opacity     != null) { s.set('opacity', config.opacity); mainWindow && mainWindow.setOpacity(config.opacity); }
-  if (config.alwaysOnTop != null) { s.set('alwaysOnTop', config.alwaysOnTop); mainWindow && mainWindow.setAlwaysOnTop(config.alwaysOnTop); }
+  if (config.alwaysOnTop != null) { s.set('alwaysOnTop', config.alwaysOnTop); mainWindow && mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver'); }
   if (config.pollInterval != null) s.set('pollInterval', config.pollInterval);
   return true;
 });
