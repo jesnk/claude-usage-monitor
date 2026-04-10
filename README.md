@@ -1,86 +1,83 @@
 # Claude Monitor
 
-Claude Pro 사용량을 실시간으로 모니터링하는 Windows 11 오버레이 앱입니다.
-화면 우하단에 항상 떠있으며, 2개 계정을 동시에 모니터링할 수 있습니다.
+A lightweight always-on-top overlay app for Windows that displays your Claude Pro usage in real time. It sits in the corner of your screen so you can keep an eye on your rate limits while working.
 
-## 기능
+## Features
 
-- 🔲 **항상 위에 표시** — 어떤 앱 위에서도 보임
-- 📊 **현재 세션 사용량** — 5시간 롤링 윈도우 기준 메시지 제한
-- 📅 **주간 사용량** — 7일 기준 전체 사용량
-- 👥 **2개 계정 동시** — 색상으로 구분
-- 🔄 **자동 갱신** — 60초마다 자동 새로고침
-- 🖱️ **드래그** — 화면 어디든 이동 가능
+- **Always-on-top overlay** — transparent, click-through window that stays above all apps
+- **Session usage** — current message count within the 5-hour rolling window
+- **Daily reset timer** — countdown to when your usage resets
+- **Multi-account support** — monitor multiple Claude accounts simultaneously, color-coded
+- **Per-organization visibility** — show or hide specific orgs per account
+- **Auto-refresh** — polls usage data every 60 seconds (configurable)
+- **Compact mode** — minimized single-line view; double-click to toggle
+- **Draggable** — move the overlay anywhere on screen
+- **System tray** — minimize to tray; double-click tray icon to show/hide
+- **Configurable opacity** — adjust transparency to your preference
+- **Zoom in/out** — `Ctrl +` / `Ctrl -` to resize the overlay
 
-## 설치 및 실행
+## Getting Started
 
-### 방법 1: 직접 실행 (개발 모드)
+### Prerequisites
 
-**필요 조건:** Node.js 18+ 설치 (https://nodejs.org)
+- [Node.js](https://nodejs.org) 18 or later
+- Windows 10/11
 
-```cmd
-# 이 폴더에서 실행
+### Run in Development Mode
+
+```bash
 npm install
 npm start
 ```
 
-또는 `start.bat` 더블클릭
+### Build an Installer
 
-### 방법 2: 실행 파일 빌드
-
-```cmd
+```bash
 npm run build
 ```
 
-`dist/` 폴더에 설치 파일이 생성됩니다.
+The installer will be generated in the `dist/` directory.
 
----
+## How to Get Your Session Key
 
-## 세션 키 얻는 방법
+Claude Monitor authenticates with the Claude API using your `sessionKey` cookie.
 
-Claude의 사용량 API는 `sessionKey` 쿠키로 인증합니다.
+1. Go to [claude.ai](https://claude.ai) and log in
+2. Open DevTools — press `F12` or `Ctrl+Shift+I`
+3. Navigate to the **Application** tab
+4. In the sidebar, expand **Cookies** and click **https://claude.ai**
+5. Find the `sessionKey` row and copy its **Value**
+6. Paste it into the app settings
 
-### 단계별 안내
+> **Warning:** Your session key is equivalent to a password. Do not share it with anyone.
+> It expires when you log out or after extended inactivity — re-enter it when needed.
 
-1. **chrome.ai 접속** — [claude.ai](https://claude.ai) 로그인
-2. **개발자도구 열기** — `F12` 또는 `Ctrl+Shift+I`
-3. **Application 탭** 클릭
-4. 좌측 트리에서 **Cookies → https://claude.ai** 클릭
-5. `sessionKey` 항목을 찾아 **Value** 컬럼의 값 복사
-6. 앱 설정에서 붙여넣기
+## Usage Data
 
-> ⚠️ 세션 키는 비밀번호와 같습니다. 타인과 공유하지 마세요.
-> 세션 키는 로그아웃하거나 오래되면 만료됩니다. 만료 시 재입력 필요.
+Claude Pro enforces rate limits on two dimensions:
 
----
+| Limit | Window | Description |
+|-------|--------|-------------|
+| Session | 5-hour rolling | Messages sent in the last 5 hours |
+| Weekly | 7 days | Total messages this billing week |
 
-## 사용량 데이터 구조
+## Troubleshooting
 
-Claude Pro는 두 가지 제한을 적용합니다:
+### "Session expired" error
+Re-copy your session key from claude.ai and update it in the app settings.
 
-| 제한 | 기준 | 설명 |
-|------|------|------|
-| 현재 세션 | 5시간 롤링 윈도우 | 최근 5시간 내 보낸 메시지 수 |
-| 주간 사용량 | 7일 | 이번 주 전체 메시지 수 |
+### Data shows "?"
+The Claude API response format may have changed, or the request failed. Click the refresh button to retry.
 
----
+### App is not visible
+Double-click the system tray icon to toggle visibility.
 
-## 문제 해결
+## Tech Stack
 
-### "Session expired" 오류
-→ claude.ai에서 세션 키를 새로 복사해 설정에서 업데이트
+- **Electron** — desktop application framework
+- **claude.ai internal API** — `/api/account`, `/api/organizations`, `/api/organizations/{id}/usage`
+- **electron-store** — persistent local configuration
 
-### 데이터가 "?" 로 표시됨
-→ Claude의 내부 API 응답 형식이 변경되었을 수 있음
-→ 새로고침 버튼으로 재시도
+## License
 
-### 앱이 보이지 않음
-→ 시스템 트레이 아이콘 더블클릭으로 표시/숨김 토글
-
----
-
-## 기술 스택
-
-- **Electron** — 크로스플랫폼 데스크탑 앱
-- **claude.ai 내부 API** — `/api/account`, `/api/organizations`, `/api/organizations/{id}/usage`
-- **electron-store** — 설정 영속화
+MIT
